@@ -37,6 +37,9 @@ li span.t{flex:1;word-break:break-word}li.dn span.t{text-decoration:line-through
 li .x{border:0;background:none;font-size:18px;opacity:.6;padding:0 4px;color:#2a2a2e}
 .fitness{background:#ffcdb2}.beauty{background:#d9c8f5}.study{background:#ffb561}.job{background:#a8cdf5}
 .em{color:var(--mu);text-align:center;padding:16px 0}
+.tm{font-size:11px;opacity:.8}
+li .mid{flex:1;display:flex;flex-direction:column;min-width:0}
+.add label{font-size:12px;color:var(--mu);display:flex;flex-direction:column;gap:3px;flex:1}
 </style></head><body>
 <div class="w">
 <div class="c">
@@ -50,6 +53,7 @@ li .x{border:0;background:none;font-size:18px;opacity:.6;padding:0 4px;color:#2a
  <div class="sc"><b id="sn"></b><div class="bar"><b id="sb" style="width:0"></b></div></div>
  <div class="add">
   <input id="tx" placeholder="Add a task or story point…" maxlength="120">
+  <div class="row"><label>Start time<input type="time" id="st"></label><label>Complete by<input type="time" id="en"></label></div>
   <div class="row"><select id="sp"><option value="day">This day</option><option value="month">Whole month</option><option value="year">Whole year</option></select>
   <select id="ct"><option value="fitness">Fitness</option><option value="beauty">Beauty</option><option value="study">Study</option><option value="job">Job</option></select>
   <button class="pri" id="ad">Add</button></div>
@@ -62,7 +66,7 @@ let S={tasks:[],done:{}};
 try{S=JSON.parse(localStorage.getItem('planner')||'')||S}catch(e){}
 const save=()=>{try{localStorage.setItem('planner',JSON.stringify(S))}catch(e){}};
 const pad=n=>String(n).padStart(2,'0'),key=(y,m,d)=>`${y}-${pad(m+1)}-${pad(d)}`;
-const now=new Date();let vy=now.getFullYear(),vm=now.getMonth(),sel=key(vy,vm,now.getDate());
+let pend=null;const now=new Date();let vy=now.getFullYear(),vm=now.getMonth(),sel=key(vy,vm,now.getDate());
 const MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const forDate=d=>S.tasks.filter(t=>t.date===d||t.date===d.slice(0,7)||t.date===d.slice(0,4));
 const stat=d=>{const l=forDate(d),n=(S.done[d]||[]).filter(i=>l.some(t=>t.id===i)).length;return[n,l.length]};
@@ -78,21 +82,21 @@ function render(){
  const[n,t]=stat(sel),[y,m,dd]=sel.split('-');
  $('sd').textContent=new Date(+y,m-1,dd).toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
  $('sn').textContent=t?`${n} / ${t} done`:'No tasks';$('sb').style.width=(t?n/t*100:0)+'%';
- const l=forDate(sel),dn=S.done[sel]||[];
- $('ls').innerHTML=l.length?l.map(x=>`<li class="${x.cat} ${dn.includes(x.id)?'dn':''}"><input type="checkbox" data-c="${x.id}" ${dn.includes(x.id)?'checked':''}><span class="t"></span><span class="tag">${x.cat}${x.scope!=='day'?' · '+x.scope:''}</span><button class="x" data-x="${x.id}" aria-label="Delete">×</button></li>`).join(''):'<div class="em">Nothing planned. Add your first task above.</div>';
+ const l=forDate(sel).sort((a,b)=>(a.st||'99:99').localeCompare(b.st||'99:99')),dn=S.done[sel]||[];
+ $('ls').innerHTML=l.length?l.map(x=>`<li class="${x.cat} ${dn.includes(x.id)?'dn':''}"><input type="checkbox" data-c="${x.id}" ${dn.includes(x.id)?'checked':''}><div class="mid"><span class="t"></span>${x.st||x.en?`<span class="tm">⏰ ${x.st||'—'} → ${x.en||'—'}</span>`:''}</div><span class="tag">${x.cat}${x.scope!=='day'?' · '+x.scope:''}</span><button class="x" data-x="${x.id}" aria-label="Delete" style="${pend===x.id?'font-size:11px;opacity:1;font-weight:600':''}">${pend===x.id?'Delete all days?':'×'}</button></li>`).join(''):'<div class="em">Nothing planned. Add your first task above.</div>';
  [...$('ls').children].forEach((li,i)=>{if(l[i])li.querySelector('.t').textContent=l[i].text});
 }
 $('cal').onclick=e=>{const b=e.target.closest('[data-k]');if(b){sel=b.dataset.k;render()}};
 $('pv').onclick=()=>{vm--;if(vm<0){vm=11;vy--}render()};
 $('nx').onclick=()=>{vm++;if(vm>11){vm=0;vy++}render()};
-function add(){const v=$('tx').value.trim();if(!v)return;const s=$('sp').value;
- S.tasks.push({id:Date.now()+Math.random().toString(36).slice(2,6),text:v,cat:$('ct').value,scope:s,date:s==='day'?sel:s==='month'?sel.slice(0,7):sel.slice(0,4)});
- $('tx').value='';save();render()}
+function add(){const v=$('tx').value.trim();if(!v){$('tx').focus();$('tx').placeholder='Type a task first…';return}const s=$('sp').value;const st=$('st').value,en=$('en').value;
+ S.tasks.push({id:Date.now()+Math.random().toString(36).slice(2,6),text:v,st,en,cat:$('ct').value,scope:s,date:s==='day'?sel:s==='month'?sel.slice(0,7):sel.slice(0,4)});
+ $('tx').value='';$('st').value=$('en').value='';save();render()}
 $('ad').onclick=add;$('tx').onkeydown=e=>{if(e.key==='Enter')add()};
 $('ls').onchange=e=>{const id=e.target.dataset.c;if(!id)return;const a=S.done[sel]||(S.done[sel]=[]);
  const i=a.indexOf(id);i<0?a.push(id):a.splice(i,1);save();render()};
 $('ls').onclick=e=>{const id=e.target.dataset.x;if(!id)return;const t=S.tasks.find(x=>x.id===id);
- if(t.scope!=='day'&&!confirm(`This ${t.scope}-wise task will be removed from every day in the ${t.scope}. Delete?`))return;
+ if(t.scope!=='day'&&pend!==id){pend=id;render();return}pend=null;
  S.tasks=S.tasks.filter(x=>x.id!==id);save();render()};
 render();
 </script></body></html>
