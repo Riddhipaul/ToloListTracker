@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Daily Planner</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#faf8f5;--card:#fff;--tx:#2a2a2e;--mu:#7a7a85;--bd:#e6e2db;--g:#bfe8c8;--y:#fbe7a0;--r:#f4b6b6;--ac:#5b6cf0}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17171a;--card:#222227;--tx:#eee;--mu:#9a9aa5;--bd:#34343b;--g:#3f7a52;--y:#8f7a28;--r:#8c4444}}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,Segoe UI,sans-serif}
+.w{max-width:960px;margin:0 auto;padding:14px;display:grid;gap:14px;grid-template-columns:1fr}
+@media(min-width:800px){.w{grid-template-columns:1.2fr 1fr}}
+.c{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:14px}
+h1{font-size:20px;margin:0 0 4px}h2{font-size:16px;margin:0}
+.hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+button{font:inherit;color:inherit;cursor:pointer}
+.nb{border:1px solid var(--bd);background:var(--card);border-radius:10px;padding:4px 12px}
+.gr{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.dw{text-align:center;font-size:11px;color:var(--mu)}
+.d{aspect-ratio:1;border:2px solid transparent;border-radius:10px;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:14px;padding:0;line-height:1.15}
+.d small{font-size:10px;color:var(--tx);opacity:.75}
+.d.g{background:var(--g)}.d.y{background:var(--y)}.d.r{background:var(--r)}
+.d.t{border-color:var(--mu)}.d.s{border-color:var(--ac);box-shadow:0 0 0 2px var(--ac)}
+.lg{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--mu);margin-top:10px}
+.lg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px}
+.sc{display:flex;align-items:center;gap:10px;margin:6px 0 10px}
+.bar{flex:1;height:8px;background:var(--bd);border-radius:6px;overflow:hidden}.bar b{display:block;height:100%;background:var(--ac)}
+.add{display:grid;gap:8px;margin-bottom:12px}
+.add input,.add select{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:9px;width:100%}
+.row{display:flex;gap:8px}
+.pri{background:var(--ac);color:#fff;border:0;border-radius:10px;padding:9px 16px}
+ul{list-style:none;margin:0;padding:0;display:grid;gap:7px}
+li{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:12px;color:#2a2a2e}
+li input{width:18px;height:18px;accent-color:#2a2a2e;flex:none}
+li span.t{flex:1;word-break:break-word}li.dn span.t{text-decoration:line-through;opacity:.55}
+.tag{font-size:10px;background:rgba(255,255,255,.6);border-radius:8px;padding:1px 7px;white-space:nowrap}
+li .x{border:0;background:none;font-size:18px;opacity:.6;padding:0 4px;color:#2a2a2e}
+.fitness{background:#ffcdb2}.beauty{background:#d9c8f5}.study{background:#ffb561}.job{background:#a8cdf5}
+.em{color:var(--mu);text-align:center;padding:16px 0}
+</style></head><body>
+<div class="w">
+<div class="c">
+ <div class="hd"><button class="nb" id="pv">‹</button><h2 id="mt"></h2><button class="nb" id="nx">›</button></div>
+ <div class="gr" id="dw"></div><div class="gr" id="cal" style="margin-top:5px"></div>
+ <div class="lg"><span><i style="background:var(--g)"></i>&gt;80%</span><span><i style="background:var(--y)"></i>40–80%</span><span><i style="background:var(--r)"></i>&lt;40%</span>
+ <span><i style="background:#ffcdb2"></i>Fitness</span><span><i style="background:#d9c8f5"></i>Beauty</span><span><i style="background:#ffb561"></i>Study</span><span><i style="background:#a8cdf5"></i>Job</span></div>
+</div>
+<div class="c">
+ <h1 id="sd"></h1>
+ <div class="sc"><b id="sn"></b><div class="bar"><b id="sb" style="width:0"></b></div></div>
+ <div class="add">
+  <input id="tx" placeholder="Add a task or story point…" maxlength="120">
+  <div class="row"><select id="sp"><option value="day">This day</option><option value="month">Whole month</option><option value="year">Whole year</option></select>
+  <select id="ct"><option value="fitness">Fitness</option><option value="beauty">Beauty</option><option value="study">Study</option><option value="job">Job</option></select>
+  <button class="pri" id="ad">Add</button></div>
+ </div>
+ <ul id="ls"></ul>
+</div></div>
+<script>
+const $=id=>document.getElementById(id);
+let S={tasks:[],done:{}};
+try{S=JSON.parse(localStorage.getItem('planner')||'')||S}catch(e){}
+const save=()=>{try{localStorage.setItem('planner',JSON.stringify(S))}catch(e){}};
+const pad=n=>String(n).padStart(2,'0'),key=(y,m,d)=>`${y}-${pad(m+1)}-${pad(d)}`;
+const now=new Date();let vy=now.getFullYear(),vm=now.getMonth(),sel=key(vy,vm,now.getDate());
+const MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const forDate=d=>S.tasks.filter(t=>t.date===d||t.date===d.slice(0,7)||t.date===d.slice(0,4));
+const stat=d=>{const l=forDate(d),n=(S.done[d]||[]).filter(i=>l.some(t=>t.id===i)).length;return[n,l.length]};
+$('dw').innerHTML=['S','M','T','W','T','F','S'].map(x=>`<div class="dw">${x}</div>`).join('');
+function render(){
+ $('mt').textContent=MN[vm]+' '+vy;
+ const first=new Date(vy,vm,1).getDay(),days=new Date(vy,vm+1,0).getDate();let h='';
+ for(let i=0;i<first;i++)h+='<div></div>';
+ for(let d=1;d<=days;d++){const k=key(vy,vm,d),[n,t]=stat(k),p=t?n/t*100:0;
+  const c=!t?'':p>80?'g':p>=40?'y':'r';
+  h+=`<button class="d ${c} ${k===sel?'s':''} ${k===key(now.getFullYear(),now.getMonth(),now.getDate())?'t':''}" data-k="${k}">${d}${t?`<small>${n}/${t}</small>`:''}</button>`}
+ $('cal').innerHTML=h;
+ const[n,t]=stat(sel),[y,m,dd]=sel.split('-');
+ $('sd').textContent=new Date(+y,m-1,dd).toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+ $('sn').textContent=t?`${n} / ${t} done`:'No tasks';$('sb').style.width=(t?n/t*100:0)+'%';
+ const l=forDate(sel),dn=S.done[sel]||[];
+ $('ls').innerHTML=l.length?l.map(x=>`<li class="${x.cat} ${dn.includes(x.id)?'dn':''}"><input type="checkbox" data-c="${x.id}" ${dn.includes(x.id)?'checked':''}><span class="t"></span><span class="tag">${x.cat}${x.scope!=='day'?' · '+x.scope:''}</span><button class="x" data-x="${x.id}" aria-label="Delete">×</button></li>`).join(''):'<div class="em">Nothing planned. Add your first task above.</div>';
+ [...$('ls').children].forEach((li,i)=>{if(l[i])li.querySelector('.t').textContent=l[i].text});
+}
+$('cal').onclick=e=>{const b=e.target.closest('[data-k]');if(b){sel=b.dataset.k;render()}};
+$('pv').onclick=()=>{vm--;if(vm<0){vm=11;vy--}render()};
+$('nx').onclick=()=>{vm++;if(vm>11){vm=0;vy++}render()};
+function add(){const v=$('tx').value.trim();if(!v)return;const s=$('sp').value;
+ S.tasks.push({id:Date.now()+Math.random().toString(36).slice(2,6),text:v,cat:$('ct').value,scope:s,date:s==='day'?sel:s==='month'?sel.slice(0,7):sel.slice(0,4)});
+ $('tx').value='';save();render()}
+$('ad').onclick=add;$('tx').onkeydown=e=>{if(e.key==='Enter')add()};
+$('ls').onchange=e=>{const id=e.target.dataset.c;if(!id)return;const a=S.done[sel]||(S.done[sel]=[]);
+ const i=a.indexOf(id);i<0?a.push(id):a.splice(i,1);save();render()};
+$('ls').onclick=e=>{const id=e.target.dataset.x;if(!id)return;const t=S.tasks.find(x=>x.id===id);
+ if(t.scope!=='day'&&!confirm(`This ${t.scope}-wise task will be removed from every day in the ${t.scope}. Delete?`))return;
+ S.tasks=S.tasks.filter(x=>x.id!==id);save();render()};
+render();
+</script></body></html>
